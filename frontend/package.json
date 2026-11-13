@@ -13,11 +13,10 @@
     "@fontsource/public-sans": "5.2.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-router-dom": "7.5.3"
+    "react-router-dom": "7.18.5"
   },
   "devDependencies": {
     "@playwright/test": "1.65.0",
-
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
     "@testing-library/user-event": "14.6.1",
@@ -31,6 +30,6 @@
     "tailwindcss": "3.4.17",
     "typescript": "5.8.3",
     "vite": "6.4.6",
-    "vitest": "3.2.7"
+    "vitest": "5.1.0"
   }
 }

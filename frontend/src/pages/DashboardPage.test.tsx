@@ -10,16 +10,16 @@ import type { ExecutiveDashboard } from '../api/dashboard';
 vi.mock('../api/dashboard', () => ({ getExecutiveDashboard: vi.fn() }));
 
 const populated: ExecutiveDashboard = {
-  enterpriseQuality: 81,
-  averageHealth: 84,
-  automationMaturity: 75,
+  enterpriseQualityScore: 81,
+  averageApplicationHealthScore: 84,
+  automationMaturityScore: 75,
   openCriticalDefects: 11,
   applicationsAtRisk: 3,
   totalApplications: 10,
   totalPortfolios: 3,
-  portfolios: [
-    { id: 'portfolio-1', name: 'Payments', productArea: 'Payments', qualityScore: 79, highRiskApplications: 1 },
-    { id: 'portfolio-2', name: 'Empty portfolio', productArea: 'Other', qualityScore: null, highRiskApplications: 0 },
+  portfolioQualityScores: [
+    { portfolioId: 'portfolio-1', portfolioName: 'Payments', qualityScore: 79, highRiskApplicationCount: 1 },
+    { portfolioId: 'portfolio-2', portfolioName: 'Empty portfolio', qualityScore: null, highRiskApplicationCount: 0 },
   ],
 };
 
@@ -85,14 +85,14 @@ describe('DashboardPage', () => {
     renderDashboard();
     expect(screen.getByText('Loading executive dashboard…')).toHaveAttribute('role', 'status');
     resolveRequest?.({
-      enterpriseQuality: null,
-      averageHealth: null,
-      automationMaturity: null,
+      enterpriseQualityScore: null,
+      averageApplicationHealthScore: null,
+      automationMaturityScore: null,
       openCriticalDefects: 0,
       applicationsAtRisk: 0,
       totalApplications: 0,
       totalPortfolios: 1,
-      portfolios: [{ id: 'portfolio-1', name: 'Payments', productArea: 'Payments', qualityScore: null, highRiskApplications: 0 }],
+      portfolioQualityScores: [{ portfolioId: 'portfolio-1', portfolioName: 'Payments', qualityScore: null, highRiskApplicationCount: 0 }],
     });
     expect(await screen.findByText('No applications match these filters.')).toBeInTheDocument();
     expect(screen.getAllByText('—')).toHaveLength(3);

@@ -6,11 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class PortfolioComparison(BaseModel):
     """Expose filtered quality and risk measures for one visible portfolio."""
 
-    id: str
-    name: str
-    productArea: str
+    portfolioId: str
+    portfolioName: str
     qualityScore: int | None
-    highRiskApplications: int
+    highRiskApplicationCount: int
 
 
 class ExecutiveDashboardResponse(BaseModel):
@@ -18,14 +17,14 @@ class ExecutiveDashboardResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    enterpriseQuality: int | None
-    averageHealth: int | None
-    automationMaturity: int | None
+    enterpriseQualityScore: int | None
+    averageApplicationHealthScore: int | None
+    automationMaturityScore: int | None
     openCriticalDefects: int
     applicationsAtRisk: int
     totalApplications: int
     totalPortfolios: int
-    portfolios: list[PortfolioComparison] = Field(default_factory=list)
+    portfolioQualityScores: list[PortfolioComparison] = Field(default_factory=list)
 
 
 __all__ = ["ExecutiveDashboardResponse", "PortfolioComparison"]

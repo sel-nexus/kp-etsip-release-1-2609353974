@@ -13,6 +13,9 @@ venv/
 .env.local
 .env.*.local
 .DS_Store
+test-results/
+playwright-report/
+preflight-output.txt
 
 # Pipeline working artifacts stay in the task workspace
 PLAN.md

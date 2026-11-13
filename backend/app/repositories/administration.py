@@ -6,6 +6,7 @@ from typing import Any
 from bson import ObjectId
 from pymongo import ReturnDocument
 from pymongo.asynchronous.database import AsyncDatabase
+from pymongo.errors import DuplicateKeyError
 
 
 class AdministrationRepository:
@@ -66,6 +67,27 @@ class AdministrationRepository:
     async def get_role(self, name: str) -> dict[str, Any] | None:
         """Find one persisted role definition by its exact supported name."""
         return await self.roles.find_one({"name": name})
+
+    async def provision_role(self, document: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        """Insert a role only when absent, returning its record and creation state."""
+        name = document["name"]
+        try:
+            result = await self.roles.update_one(
+                {"name": name}, {"$setOnInsert": document}, upsert=True
+            )
+        except DuplicateKeyError:
+            # A concurrent upsert may win the unique-name index between this
+            # request's existence check and insert; return its unchanged row.
+            existing = await self.get_role(name)
+            if existing is None:
+                raise
+            return existing, False
+
+        created = result.upserted_id is not None
+        row = await self.roles.find_one({"_id": result.upserted_id}) if created else await self.get_role(name)
+        if row is None:
+            raise RuntimeError("Provisioned role could not be retrieved from MongoDB.")
+        return row, created
 
     async def update_role(self, name: str, changes: dict[str, Any]) -> dict[str, Any] | None:
         """Update an existing role without creating any new role record."""

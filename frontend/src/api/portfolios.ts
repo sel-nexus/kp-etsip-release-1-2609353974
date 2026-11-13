@@ -59,18 +59,29 @@ export interface PortfolioFilters {
   pageSize?: number;
 }
 
+export interface PortfolioFields {
+  name: string;
+  owner: string;
+  description: string;
+  productArea: string;
+  status: PortfolioStatus;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 /** Send one authenticated inventory request and surface server failures. */
-async function portfolioRequest<T>(path: string): Promise<T> {
+async function portfolioRequest<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const token = getSessionToken();
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
       headers: {
         Accept: 'application/json',
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (error) {
     if (error instanceof Error) throw error;
@@ -86,6 +97,7 @@ async function portfolioRequest<T>(path: string): Promise<T> {
     }
     throw new Error(message);
   }
+  if (response.status === 204) return undefined as T;
   return await response.json() as T;
 }
 
@@ -102,6 +114,21 @@ export function listPortfolios(filters: PortfolioFilters = {}): Promise<Portfoli
 /** Read one portfolio detail record and its source-derived rollups. */
 export function getPortfolio(id: string): Promise<Portfolio> {
   return portfolioRequest<Portfolio>(`/api/portfolios/${encodeURIComponent(id)}`);
+}
+
+/** Create a portfolio using the authenticated administrator session. */
+export function createPortfolio(fields: PortfolioFields): Promise<Portfolio> {
+  return portfolioRequest<Portfolio>('/api/portfolios', 'POST', fields);
+}
+
+/** Update a portfolio using the authenticated administrator session. */
+export function updatePortfolio(id: string, fields: PortfolioFields): Promise<Portfolio> {
+  return portfolioRequest<Portfolio>(`/api/portfolios/${encodeURIComponent(id)}`, 'PUT', fields);
+}
+
+/** Delete a portfolio when the backend confirms it has no linked applications. */
+export function deletePortfolio(id: string): Promise<void> {
+  return portfolioRequest<void>(`/api/portfolios/${encodeURIComponent(id)}`, 'DELETE');
 }
 
 /** Read one bounded page of applications linked to an accessible portfolio. */

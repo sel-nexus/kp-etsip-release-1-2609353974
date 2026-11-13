@@ -6,6 +6,10 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PortfoliosPage from './PortfoliosPage';
 import PortfolioDetailPage from './PortfolioDetailPage';
 
+vi.mock('../auth/AuthProvider', () => ({
+  useAuth: () => ({ user: { role: 'Administrator', permissions: ['view', 'administer'], portfolioAccess: [] } }),
+}));
+
 const portfolioResponse = {
   items: [
     {

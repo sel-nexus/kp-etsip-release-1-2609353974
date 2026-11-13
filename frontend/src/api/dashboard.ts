@@ -2,23 +2,22 @@ import { getSessionToken } from './auth';
 
 /** Match the typed backend response for enterprise dashboard metrics. */
 export interface ExecutiveDashboard {
-  enterpriseQuality: number | null;
-  averageHealth: number | null;
-  automationMaturity: number | null;
+  enterpriseQualityScore: number | null;
+  averageApplicationHealthScore: number | null;
+  automationMaturityScore: number | null;
   openCriticalDefects: number;
   applicationsAtRisk: number;
   totalApplications: number;
   totalPortfolios: number;
-  portfolios: PortfolioComparison[];
+  portfolioQualityScores: PortfolioComparison[];
 }
 
 /** Describe a visible portfolio's filtered quality and high-risk count. */
 export interface PortfolioComparison {
-  id: string;
-  name: string;
-  productArea: string;
+  portfolioId: string;
+  portfolioName: string;
   qualityScore: number | null;
-  highRiskApplications: number;
+  highRiskApplicationCount: number;
 }
 
 /** Keep dashboard filters constrained to the API's supported query fields. */

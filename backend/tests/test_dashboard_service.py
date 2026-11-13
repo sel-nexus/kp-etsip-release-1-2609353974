@@ -23,15 +23,15 @@ async def test_executive_aggregates_seed_metrics_and_half_up_rounding(
 
     assert isinstance(response, ExecutiveDashboardResponse)
     assert response.model_dump() == {
-        "enterpriseQuality": 81,
-        "averageHealth": 84,
-        "automationMaturity": 75,
+        "enterpriseQualityScore": 81,
+        "averageApplicationHealthScore": 84,
+        "automationMaturityScore": 75,
         "openCriticalDefects": 11,
         "applicationsAtRisk": 3,
         "totalApplications": 10,
         "totalPortfolios": 3,
-        "portfolios": [
-            {"id": str(row["_id"]), "name": row["name"], "productArea": row["productArea"], "qualityScore": score, "highRiskApplications": risk}
+        "portfolioQualityScores": [
+            {"portfolioId": str(row["_id"]), "portfolioName": row["name"], "qualityScore": score, "highRiskApplicationCount": risk}
             for row, score, risk in [
                 (await database["portfolios"].find_one({"name": "Customer Platform"}), 82, 1),
                 (await database["portfolios"].find_one({"name": "Data & Analytics"}), 83, 1),
@@ -57,17 +57,17 @@ async def test_filters_scope_before_aggregation_and_keep_visible_empty_portfolio
     empty = await service.executive(leader, product_area="Does not exist")
 
     assert filtered.totalApplications == 1
-    assert filtered.enterpriseQuality == 73
+    assert filtered.enterpriseQualityScore == 73
     assert filtered.applicationsAtRisk == 1
     assert filtered.openCriticalDefects == 2
     assert filtered.totalPortfolios == 1
-    assert [row.name for row in filtered.portfolios] == ["Payments"]
+    assert [row.portfolioName for row in filtered.portfolioQualityScores] == ["Payments"]
     assert empty.totalApplications == 0
-    assert empty.enterpriseQuality is None and empty.averageHealth is None and empty.automationMaturity is None
+    assert empty.enterpriseQualityScore is None and empty.averageApplicationHealthScore is None and empty.automationMaturityScore is None
     assert empty.openCriticalDefects == empty.applicationsAtRisk == 0
     assert empty.totalPortfolios == 1
-    assert empty.portfolios[0].qualityScore is None and empty.portfolios[0].highRiskApplications == 0
-    assert str(customer_portfolio["_id"]) not in {row.id for row in filtered.portfolios}
+    assert empty.portfolioQualityScores[0].qualityScore is None and empty.portfolioQualityScores[0].highRiskApplicationCount == 0
+    assert str(customer_portfolio["_id"]) not in {row.portfolioId for row in filtered.portfolioQualityScores}
 
 
 @pytest.mark.asyncio
@@ -96,10 +96,10 @@ async def test_temporary_real_mongo_records_prove_exact_half_up_and_grouping(
             {"role": "Administrator", "permissions": ["view", "administer"], "portfolioAccess": []},
             portfolio_id=str(portfolio_id),
         )
-        assert result.enterpriseQuality == 85
-        assert result.averageHealth == 81
-        assert result.automationMaturity == 51
-        assert result.portfolios[0].qualityScore == 85
+        assert result.enterpriseQualityScore == 85
+        assert result.averageApplicationHealthScore == 81
+        assert result.automationMaturityScore == 51
+        assert result.portfolioQualityScores[0].qualityScore == 85
         assert result.totalApplications == 2
     finally:
         await database["applications"].delete_many({"portfolioId": portfolio_id, "name": {"$in": ["Half lower", "Half upper"]}})

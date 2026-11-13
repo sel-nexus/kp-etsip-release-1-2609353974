@@ -80,6 +80,10 @@ async def test_create_update_and_delete_audit_only_successful_changes(
     updated_values = application_values(str(portfolio["_id"]), "Updated service application")
     updated = await service.update_application(created.id, ApplicationUpdate(**updated_values), actor)
     assert updated.name == "Updated service application"
+    stored_after_update = await database["applications"].find_one({"_id": ObjectId(created.id)})
+    assert stored_after_update is not None
+    assert stored_after_update["name"] == "Updated service application"
+    assert stored_after_update["technologyStack"] == updated_values["technologyStack"]
     await service.delete_application(created.id, actor)
 
     assert await database["applications"].find_one({"_id": ObjectId(created.id)}) is None
@@ -150,3 +154,93 @@ async def test_schema_rejects_invalid_bounds_enums_and_urls() -> None:
     ):
         with pytest.raises(ValueError):
             ApplicationCreate(**(source | override))
+
+
+@pytest.mark.asyncio
+async def test_rejected_application_update_preserves_stored_values_and_audit(
+    started_app: AsyncMongoClient[dict[str, Any]],
+) -> None:
+    """Reject duplicate-name updates without changing Mongo values or audit history."""
+    database = started_app.get_database("ketsip_test")
+    portfolio = await database["portfolios"].find_one({"name": "Payments"})
+    existing = await database["applications"].find_one({"name": "Payment Gateway"})
+    admin = await database["users"].find_one({"email": "admin@ketsip.local"})
+    assert portfolio and existing and admin
+    actor = {
+        "_id": admin["_id"], "name": admin["name"], "role": "Administrator",
+        "permissions": ["view", "create", "edit", "delete", "administer"], "portfolioAccess": [],
+    }
+    service = ApplicationsService(ApplicationsRepository(database), AuditRepository(database))
+    baseline = await database["applications"].find_one({"_id": existing["_id"]})
+    audit_count = await database["audit_logs"].count_documents({"entityType": "application"})
+
+    with pytest.raises(HTTPException) as duplicate:
+        await service.update_application(
+            str(existing["_id"]),
+            ApplicationUpdate(**application_values(str(portfolio["_id"]), "Settlement Orchestrator")),
+            actor,
+        )
+
+    assert duplicate.value.status_code == 409
+    assert await database["applications"].find_one({"_id": existing["_id"]}) == baseline
+    assert await database["audit_logs"].count_documents({"entityType": "application"}) == audit_count
+
+
+@pytest.mark.asyncio
+async def test_application_update_lost_row_and_audit_failure_have_explicit_persisted_outcomes(
+    started_app: AsyncMongoClient[dict[str, Any]],
+) -> None:
+    """Reject a lost update row without audit and expose the committed create if audit fails."""
+    database = started_app.get_database("ketsip_test")
+    portfolio = await database["portfolios"].find_one({"name": "Payments"})
+    existing = await database["applications"].find_one({"name": "Payment Gateway"})
+    admin = await database["users"].find_one({"email": "admin@ketsip.local"})
+    assert portfolio is not None and existing is not None and admin is not None
+    actor = {
+        "_id": admin["_id"], "name": admin["name"], "role": "Administrator",
+        "permissions": ["view", "create", "edit", "delete", "administer"], "portfolioAccess": [],
+    }
+    audit_count = await database["audit_logs"].count_documents({"entityType": "application"})
+
+    class DeletingApplicationRepository(ApplicationsRepository):
+        """Remove the application after service lookup but before its conditional update."""
+
+        async def update_application(self, application_id: str, values: dict[str, Any]) -> dict[str, Any] | None:
+            await self.applications.delete_one({"_id": ObjectId(application_id)})
+            return await super().update_application(application_id, values)
+
+    raced = ApplicationsService(DeletingApplicationRepository(database), AuditRepository(database))
+    with pytest.raises(HTTPException) as missing:
+        await raced.update_application(
+            str(existing["_id"]),
+            ApplicationUpdate(**application_values(str(portfolio["_id"]), "Lost update")),
+            actor,
+        )
+    assert missing.value.status_code == 404
+    assert await database["applications"].find_one({"_id": existing["_id"]}) is None
+    assert await database["audit_logs"].count_documents({"entityType": "application"}) == audit_count
+
+    class FailingAuditRepository(AuditRepository):
+        """Fail when the service records an already-persisted application create."""
+
+        async def record(self, actor: dict[str, Any], action: str, entity_type: str, entity_id: str | None, details: str, at: Any) -> None:
+            raise RuntimeError("simulated audit persistence failure")
+
+    failure_service = ApplicationsService(ApplicationsRepository(database), FailingAuditRepository(database))
+    with pytest.raises(RuntimeError, match="audit persistence failure"):
+        await failure_service.create_application(
+            ApplicationCreate(**application_values(str(portfolio["_id"]), "Audit boundary application")), actor
+        )
+    persisted = await database["applications"].find_one({"name": "Audit boundary application"})
+    assert persisted is not None and persisted["portfolioId"] == portfolio["_id"]
+    assert await database["audit_logs"].count_documents({"entityType": "application"}) == audit_count
+
+
+def test_application_create_schema_rejects_missing_fields_and_invalid_json_types() -> None:
+    """Reject omitted required source fields and non-scalar typed values."""
+    source = application_values(str(ObjectId()))
+    missing = dict(source)
+    missing.pop("name")
+    for invalid in (missing, source | {"name": None}, source | {"tier": {"$gt": 1}}, source | {"description": []}):
+        with pytest.raises(ValueError):
+            ApplicationCreate(**invalid)

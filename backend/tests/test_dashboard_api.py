@@ -23,15 +23,15 @@ async def test_dashboard_returns_exact_seed_metrics_and_role_scoped_comparisons(
     response = await api_client.get("/api/dashboard/executive", headers=executive)
     assert response.status_code == 200
     assert response.json() == {
-        "enterpriseQuality": 81,
-        "averageHealth": 84,
-        "automationMaturity": 75,
+        "enterpriseQualityScore": 81,
+        "averageApplicationHealthScore": 84,
+        "automationMaturityScore": 75,
         "openCriticalDefects": 11,
         "applicationsAtRisk": 3,
         "totalApplications": 10,
         "totalPortfolios": 3,
-        "portfolios": [
-            {"id": str(row["_id"]), "name": row["name"], "productArea": row["productArea"], "qualityScore": score, "highRiskApplications": risk}
+        "portfolioQualityScores": [
+            {"portfolioId": str(row["_id"]), "portfolioName": row["name"], "qualityScore": score, "highRiskApplicationCount": risk}
             for row, score, risk in [
                 (await started_app.get_database("ketsip_test")["portfolios"].find_one({"name": "Customer Platform"}), 82, 1),
                 (await started_app.get_database("ketsip_test")["portfolios"].find_one({"name": "Data & Analytics"}), 83, 1),
@@ -45,8 +45,8 @@ async def test_dashboard_returns_exact_seed_metrics_and_role_scoped_comparisons(
     assert scoped.status_code == 200
     assert scoped.json()["totalApplications"] == 1
     assert scoped.json()["totalPortfolios"] == 1
-    assert [row["name"] for row in scoped.json()["portfolios"]] == ["Payments"]
-    assert scoped.json()["enterpriseQuality"] == 73
+    assert [row["portfolioName"] for row in scoped.json()["portfolioQualityScores"]] == ["Payments"]
+    assert scoped.json()["enterpriseQualityScore"] == 73
 
 
 @pytest.mark.asyncio
@@ -69,14 +69,14 @@ async def test_dashboard_validation_auth_empty_and_inaccessible_id(
     no_match = await api_client.get("/api/dashboard/executive?productArea=No%20such%20area", headers=leader)
     assert no_match.status_code == 200
     assert no_match.json() == {
-        "enterpriseQuality": None,
-        "averageHealth": None,
-        "automationMaturity": None,
+        "enterpriseQualityScore": None,
+        "averageApplicationHealthScore": None,
+        "automationMaturityScore": None,
         "openCriticalDefects": 0,
         "applicationsAtRisk": 0,
         "totalApplications": 0,
         "totalPortfolios": 1,
-        "portfolios": [{"id": str(payments["_id"]), "name": "Payments", "productArea": "Payments", "qualityScore": None, "highRiskApplications": 0}],
+        "portfolioQualityScores": [{"portfolioId": str(payments["_id"]), "portfolioName": "Payments", "qualityScore": None, "highRiskApplicationCount": 0}],
     }
 
     readonly = await auth_headers(api_client, "readonly@ketsip.local")

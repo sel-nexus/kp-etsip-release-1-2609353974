@@ -51,16 +51,16 @@ export default function DashboardPage(): JSX.Element {
 
   const metrics = result
     ? [
-      { label: 'Enterprise quality', value: result.enterpriseQuality === null ? '—' : `${result.enterpriseQuality} / 100`, detail: 'Average application quality score' },
-      { label: 'Average health', value: result.averageHealth === null ? '—' : `${result.averageHealth} / 100`, detail: 'Application health score' },
-      { label: 'Automation maturity', value: result.automationMaturity === null ? '—' : `${result.automationMaturity}%`, detail: 'Average automation coverage' },
+      { label: 'Enterprise quality', value: result.enterpriseQualityScore === null ? '—' : `${result.enterpriseQualityScore} / 100`, detail: 'Average application quality score' },
+      { label: 'Average health', value: result.averageApplicationHealthScore === null ? '—' : `${result.averageApplicationHealthScore} / 100`, detail: 'Application health score' },
+      { label: 'Automation maturity', value: result.automationMaturityScore === null ? '—' : `${result.automationMaturityScore}%`, detail: 'Average automation coverage' },
       { label: 'Critical defects', value: String(result.openCriticalDefects), detail: 'Open critical defects' },
       { label: 'Applications at risk', value: String(result.applicationsAtRisk), detail: 'High-risk applications' },
       { label: 'Total applications', value: String(result.totalApplications), detail: 'Applications matching filters' },
       { label: 'Total portfolios', value: String(result.totalPortfolios), detail: 'Visible portfolios' },
     ]
     : [];
-  const maxRiskCount = result ? Math.max(1, ...result.portfolios.map((item) => item.highRiskApplications)) : 1;
+  const maxRiskCount = result ? Math.max(1, ...result.portfolioQualityScores.map((item) => item.highRiskApplicationCount)) : 1;
 
   return (
     <section className="mx-auto max-w-shell px-4 py-10 sm:px-6 lg:px-12" aria-labelledby="dashboard-title">
@@ -75,8 +75,8 @@ export default function DashboardPage(): JSX.Element {
           <label className="mb-2 block text-sm font-semibold" htmlFor="dashboard-portfolio">Portfolio</label>
           <select id="dashboard-portfolio" value={portfolioId} onChange={(event) => updateFilter('portfolioId', event.currentTarget.value)}>
             <option value="">All visible portfolios</option>
-            {(result?.portfolios ?? []).map((portfolio) => (
-              <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>
+            {(result?.portfolioQualityScores ?? []).map((portfolio) => (
+              <option key={portfolio.portfolioId} value={portfolio.portfolioId}>{portfolio.portfolioName}</option>
             ))}
           </select>
         </div>
@@ -125,32 +125,31 @@ export default function DashboardPage(): JSX.Element {
               <h2 id="portfolio-comparison-title" className="mb-2 text-xl font-semibold">Portfolio quality and risk</h2>
               <p className="text-foreground-muted">Filtered application averages and high-risk counts across visible portfolios.</p>
             </header>
-            {result.portfolios.length === 0 ? (
+            {result.portfolioQualityScores.length === 0 ? (
               <p className="py-6 text-foreground-muted" role="status">No visible portfolios are available for comparison.</p>
             ) : (
               <ul className="divide-y divide-border border-y border-border" aria-label="Portfolio comparisons">
-                {result.portfolios.map((portfolio) => (
-                  <li className="grid gap-3 py-5 sm:grid-cols-[minmax(10rem,1fr)_minmax(8rem,1.2fr)_minmax(8rem,1fr)] sm:items-center" key={portfolio.id}>
+                {result.portfolioQualityScores.map((portfolio) => (
+                  <li className="grid gap-3 py-5 sm:grid-cols-[minmax(10rem,1fr)_minmax(8rem,1.2fr)_minmax(8rem,1fr)] sm:items-center" key={portfolio.portfolioId}>
                     <div>
-                      <h3 className="mb-1 font-semibold">{portfolio.name}</h3>
-                      <p className="mb-0 text-sm text-foreground-muted">{portfolio.productArea}</p>
+                      <h3 className="mb-1 font-semibold">{portfolio.portfolioName}</h3>
                     </div>
                     <div>
                       <div className="mb-2 flex justify-between gap-3 text-sm">
                         <span className="text-foreground-muted">Quality</span>
                         <span className="font-semibold tabular-nums">{portfolio.qualityScore === null ? 'No score' : `${portfolio.qualityScore} / 100`}</span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-sm bg-surface-container-high" role="img" aria-label={`${portfolio.name} quality ${portfolio.qualityScore ?? 'unavailable'} out of 100`}>
+                      <div className="h-2 overflow-hidden rounded-sm bg-surface-container-high" role="img" aria-label={`${portfolio.portfolioName} quality ${portfolio.qualityScore ?? 'unavailable'} out of 100`}>
                         <span className="block h-full bg-primary" style={{ width: `${portfolio.qualityScore ?? 0}%` }} />
                       </div>
                     </div>
                     <div>
                       <div className="mb-2 flex justify-between gap-3 text-sm">
                         <span className="text-foreground-muted">High-risk applications</span>
-                        <span className="font-semibold tabular-nums">{portfolio.highRiskApplications}</span>
+                        <span className="font-semibold tabular-nums">{portfolio.highRiskApplicationCount}</span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-sm bg-surface-container-high" role="img" aria-label={`${portfolio.name} high-risk applications ${portfolio.highRiskApplications}`}>
-                        <span className="block h-full bg-secondary" style={{ width: `${(portfolio.highRiskApplications / maxRiskCount) * 100}%` }} />
+                      <div className="h-2 overflow-hidden rounded-sm bg-surface-container-high" role="img" aria-label={`${portfolio.portfolioName} high-risk applications ${portfolio.highRiskApplicationCount}`}>
+                        <span className="block h-full bg-secondary" style={{ width: `${(portfolio.highRiskApplicationCount / maxRiskCount) * 100}%` }} />
                       </div>
                     </div>
                   </li>

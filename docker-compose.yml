@@ -19,8 +19,10 @@ services:
       MONGODB_URI: mongodb://mongo:27017
       MONGODB_DB: ketsip
       SEED_ON_STARTUP: "true"
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-KetsipAdmin2025!}
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD to a private administrator password}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:?Set SEED_DEMO_PASSWORD to a private demo password}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a private random value of at least 32 characters}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - "8000:8000"
     depends_on:

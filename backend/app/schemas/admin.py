@@ -58,6 +58,16 @@ class RoleUpdateRequest(BaseModel):
     permissions: list[Permission] = Field(max_length=6)
 
 
+class RoleProvisionRequest(BaseModel):
+    """Validate provisioning of one of the six supported role definitions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: RoleName
+    description: str = Field(min_length=1, max_length=240)
+    permissions: list[Permission] | None = Field(default=None, max_length=6)
+
+
 class RoleResponse(BaseModel):
     """Expose a supported role and its editable permission set."""
 

@@ -55,8 +55,10 @@ export default function ApplicationFormPage(): JSX.Element {
   const [fields, setFields] = useState<ApplicationFields>(initialFields);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState('');
   const roleCanWrite = Boolean(user?.permissions.includes(editing ? 'edit' : 'create') && ['Administrator', 'Engineer', 'Portfolio Leader'].includes(user.role));
@@ -65,7 +67,7 @@ export default function ApplicationFormPage(): JSX.Element {
     let active = true;
     async function loadForm(): Promise<void> {
       setLoading(true);
-      setError('');
+      setLoadError('');
       try {
         const [page, existing] = await Promise.all([
           listPortfolios({ page: 1, pageSize: 100 }),
@@ -86,14 +88,14 @@ export default function ApplicationFormPage(): JSX.Element {
           });
         }
       } catch (reason) {
-        if (active) setError(reason instanceof Error ? reason.message : 'Application form data could not be loaded.');
+        if (active) setLoadError(reason instanceof Error ? reason.message : 'Application form data could not be loaded.');
       } finally {
         if (active) setLoading(false);
       }
     }
     void loadForm();
     return () => { active = false; };
-  }, [applicationId, editing]);
+  }, [applicationId, editing, loadAttempt]);
 
   function changeField(name: keyof ApplicationFields, value: string | number): void {
     setFields((current) => ({ ...current, [name]: value }));
@@ -165,9 +167,15 @@ export default function ApplicationFormPage(): JSX.Element {
       <h1 id="application-form-title" className="mb-2">{editing ? 'Edit application' : 'Create application'}</h1>
       <p className="mb-7 text-foreground-muted">Enter the complete application source record. Required fields are marked by the browser form.</p>
       {loading && <p role="status" aria-live="polite">Loading application form…</p>}
+      {loadError && (
+        <div className="mb-5">
+          <p className="text-error" role="alert">{loadError}</p>
+          <button className="secondary-button mt-3" type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Retry loading form</button>
+        </div>
+      )}
       {error && <p className="mb-5 text-error" role="alert">{error}</p>}
       {success && <p className="mb-5" role="status" aria-live="polite">{success}</p>}
-      {!loading && !error && (
+      {!loading && !loadError && (
         <form className="quiet-card grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(event) => void submit(event)} aria-label={editing ? 'Edit application' : 'Create application'}>
           <div className="sm:col-span-2 lg:col-span-3"><h2 className="mb-0 text-lg font-semibold">Ownership and identity</h2></div>
           {renderText('name', 'Name')}

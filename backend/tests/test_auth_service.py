@@ -107,6 +107,77 @@ async def test_landing_preferences_are_role_authorized(started_app: AsyncMongoCl
 
 
 @pytest.mark.asyncio
+async def test_password_change_rejects_same_secret_without_changing_state(started_app: AsyncMongoClient[dict[str, Any]]) -> None:
+    """Reject reusing the current secret without changing the stored hash or first-login flag."""
+    database = started_app.get_database("ketsip_test")
+    raw = await database["users"].find_one({"email": "admin@ketsip.local"})
+    assert raw is not None
+    service = make_service(database)
+
+    with pytest.raises(HTTPException) as raised:
+        await service.change_password(
+            await service.get_current_user(str(raw["_id"])),
+            "TestAdminPassword123!",
+            "TestAdminPassword123!",
+        )
+
+    assert raised.value.status_code == 422
+    assert raised.value.detail == "Choose a new password different from the current password."
+    persisted = await database["users"].find_one({"_id": raw["_id"]})
+    assert persisted is not None
+    assert persisted["passwordHash"] == raw["passwordHash"]
+    assert persisted["mustChangePassword"] is True
+    assert await database["audit_logs"].count_documents({"action": "edit", "userId": raw["_id"]}) == 0
+
+
+class ConcurrentPasswordUpdateRepository(UsersRepository):
+    """Change a real Mongo credential immediately before its conditional update."""
+
+    def __init__(self, database: Any, competing_hash: str) -> None:
+        super().__init__(database)
+        self.competing_hash = competing_hash
+
+    async def update_password(
+        self,
+        user_id: ObjectId,
+        current_hash: str,
+        new_hash: str,
+        at: datetime,
+    ) -> dict[str, Any] | None:
+        await self.users.update_one({"_id": user_id}, {"$set": {"passwordHash": self.competing_hash}})
+        return await super().update_password(user_id, current_hash, new_hash, at)
+
+
+@pytest.mark.asyncio
+async def test_password_change_rejects_conditional_update_conflict_without_overwriting_concurrent_change(
+    started_app: AsyncMongoClient[dict[str, Any]],
+) -> None:
+    """Preserve a concurrent real-Mongo credential change when the CAS update no longer matches."""
+    database = started_app.get_database("ketsip_test")
+    raw = await database["users"].find_one({"email": "admin@ketsip.local"})
+    assert raw is not None
+    competing_password = "ConcurrentAdminPassword456!"
+    competing_hash = PASSWORD_CONTEXT.hash(competing_password)
+    service = AuthService(ConcurrentPasswordUpdateRepository(database, competing_hash))
+
+    with pytest.raises(HTTPException) as raised:
+        await service.change_password(
+            await service.get_current_user(str(raw["_id"])),
+            "TestAdminPassword123!",
+            "NewAdminPassword123!",
+        )
+
+    assert raised.value.status_code == 409
+    assert raised.value.detail == "The account changed. Please retry."
+    persisted = await database["users"].find_one({"_id": raw["_id"]})
+    assert persisted is not None
+    assert persisted["passwordHash"] == competing_hash
+    assert PASSWORD_CONTEXT.verify(competing_password, persisted["passwordHash"])
+    assert persisted["mustChangePassword"] is True
+    assert await database["audit_logs"].count_documents({"action": "edit", "userId": raw["_id"]}) == 0
+
+
+@pytest.mark.asyncio
 async def test_password_change_rejects_wrong_current_secret(started_app: AsyncMongoClient[dict[str, Any]]) -> None:
     """Leave persisted credentials unchanged when the submitted current password is wrong."""
     database = started_app.get_database("ketsip_test")

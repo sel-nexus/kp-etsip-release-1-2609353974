@@ -84,23 +84,22 @@ class DashboardService:
         grouped = {str(row["_id"]): row for row in facets["portfolios"]}
         comparison = [
             PortfolioComparison(
-                id=str(portfolio["_id"]),
-                name=portfolio["name"],
-                productArea=portfolio["productArea"],
+                portfolioId=str(portfolio["_id"]),
+                portfolioName=portfolio["name"],
                 qualityScore=self._rounded(grouped.get(str(portfolio["_id"]), {}).get("qualityScore")),
-                highRiskApplications=int(grouped.get(str(portfolio["_id"]), {}).get("highRiskApplications", 0)),
+                highRiskApplicationCount=int(grouped.get(str(portfolio["_id"]), {}).get("highRiskApplications", 0)),
             )
             for portfolio in visible_portfolios
         ]
         return ExecutiveDashboardResponse(
-            enterpriseQuality=self._rounded(metrics.get("enterpriseQuality")),
-            averageHealth=self._rounded(metrics.get("averageHealth")),
-            automationMaturity=self._rounded(metrics.get("automationMaturity")),
+            enterpriseQualityScore=self._rounded(metrics.get("enterpriseQuality")),
+            averageApplicationHealthScore=self._rounded(metrics.get("averageHealth")),
+            automationMaturityScore=self._rounded(metrics.get("automationMaturity")),
             openCriticalDefects=int(metrics.get("openCriticalDefects", 0)),
             applicationsAtRisk=int(metrics.get("applicationsAtRisk", 0)),
             totalApplications=int(metrics.get("totalApplications", 0)),
             totalPortfolios=len(visible_portfolios),
-            portfolios=comparison,
+            portfolioQualityScores=comparison,
         )
 
     async def _visible_portfolios(self, user: dict[str, Any]) -> list[dict[str, Any]]:

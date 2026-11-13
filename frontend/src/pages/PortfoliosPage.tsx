@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import { listPortfolios } from '../api/portfolios';
 import type { Portfolio, PortfolioPage as PortfolioPageResponse, PortfolioStatus } from '../api/portfolios';
 import { formatQualityScore } from '../api/portfolios';
@@ -9,6 +10,10 @@ const PAGE_SIZE = 25;
 
 /** Render a shareable, permission-scoped portfolio inventory table. */
 export default function PortfoliosPage(): JSX.Element {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigationState = location.state as { success?: string } | null;
+  const canManage = Boolean(user?.role === 'Administrator' && user.permissions.includes('administer'));
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('search') ?? '';
   const status = searchParams.get('status') ?? '';
@@ -76,7 +81,10 @@ export default function PortfoliosPage(): JSX.Element {
         <p className="mb-2 text-sm font-semibold tracking-wide text-foreground-muted">INVENTORY</p>
         <h1 id="portfolios-title" className="mb-2">Portfolios</h1>
         <p className="text-foreground-muted">Review portfolio ownership and application quality rollups.</p>
+        {canManage && <Link className="primary-button mt-5 inline-flex items-center no-underline" to="/portfolios/new">Create portfolio</Link>}
       </header>
+
+      {navigationState?.success && <p className="mb-5" role="status" aria-live="polite">{navigationState.success}</p>}
 
       <form className="quiet-card mb-6 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-[minmax(12rem,2fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_auto] lg:items-end" onSubmit={applyFilters} aria-label="Filter portfolios">
         <div>

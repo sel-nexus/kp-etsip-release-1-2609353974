@@ -10,9 +10,17 @@ from starlette.concurrency import run_in_threadpool
 
 from app.repositories.administration import AdministrationRepository
 from app.repositories.audit import AuditRepository
-from app.schemas.admin import AdminUserRequest, AdminUserResponse, AdminUserUpdate, RoleResponse, RoleUpdateRequest
+from app.schemas.admin import AdminUserRequest, AdminUserResponse, AdminUserUpdate, RoleProvisionRequest, RoleResponse, RoleUpdateRequest
 
 ROLE_NAMES = ["Administrator", "Executive", "Portfolio Leader", "Engineer", "Auditor", "Read Only"]
+DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
+    "Administrator": ["view", "create", "edit", "delete", "export", "administer"],
+    "Executive": ["view", "create", "edit", "delete", "export"],
+    "Portfolio Leader": ["view", "create", "edit", "delete", "export"],
+    "Engineer": ["view", "create", "edit", "export"],
+    "Auditor": ["view", "export"],
+    "Read Only": ["view"],
+}
 PASSWORD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -99,6 +107,30 @@ class AdministrationService:
         """Return the existing six supported roles and no additional records."""
         return [RoleResponse(id=str(row["_id"]), name=row["name"], description=row["description"], permissions=row["permissions"])
                 for row in await self.repository.list_roles(ROLE_NAMES)]
+
+    async def provision_role(self, payload: RoleProvisionRequest, actor: dict[str, Any]) -> tuple[RoleResponse, bool]:
+        """Provision an absent supported role without changing an existing one."""
+        if payload.name not in ROLE_NAMES:
+            raise HTTPException(status_code=422, detail="Only the six supported roles can be provisioned.")
+        default_permissions = DEFAULT_ROLE_PERMISSIONS[payload.name]
+        permissions = default_permissions if payload.permissions is None else payload.permissions
+        if len(set(permissions)) != len(permissions):
+            raise HTTPException(status_code=422, detail="Permissions must not contain duplicates.")
+        if not set(permissions).issubset(default_permissions):
+            raise HTTPException(status_code=422, detail="Permissions must be a subset of the role's default permissions.")
+
+        now = datetime.now(UTC)
+        row, created = await self.repository.provision_role({
+            "name": payload.name,
+            "description": payload.description,
+            "permissions": permissions,
+            "createdAt": now,
+            "updatedAt": now,
+        })
+        if created:
+            await self.audit.record(actor, "create", "role", str(row["_id"]), f"Supported role provisioned: {payload.name}", now)
+        response = RoleResponse(id=str(row["_id"]), name=row["name"], description=row["description"], permissions=row["permissions"])
+        return response, created
 
     async def update_role(self, name: str, payload: RoleUpdateRequest, actor: dict[str, Any]) -> RoleResponse:
         """Edit one existing role and audit a successful permission change."""
