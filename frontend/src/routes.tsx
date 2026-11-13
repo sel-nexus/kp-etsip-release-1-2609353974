@@ -8,6 +8,9 @@ import AdministrationPage from './pages/AdministrationPage';
 import PermissionGate from './components/PermissionGate';
 import PortfoliosPage from './pages/PortfoliosPage';
 import PortfolioDetailPage from './pages/PortfolioDetailPage';
+import ApplicationsPage from './pages/ApplicationsPage';
+import ApplicationDetailPage from './pages/ApplicationDetailPage';
+import ApplicationFormPage from './pages/ApplicationFormPage';
 
 /** Render the protected placeholder routes backed by the requested API surface. */
 function PlaceholderPage(): JSX.Element {
@@ -37,7 +40,10 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <PlaceholderPage /> },
           { path: 'portfolios', element: <PortfoliosPage /> },
           { path: 'portfolios/:portfolioId', element: <PortfolioDetailPage /> },
-          { path: 'applications', element: <PlaceholderPage /> },
+          { path: 'applications', element: <ApplicationsPage /> },
+          { path: 'applications/new', element: <ApplicationFormPage /> },
+          { path: 'applications/:applicationId/edit', element: <ApplicationFormPage /> },
+          { path: 'applications/:applicationId', element: <ApplicationDetailPage /> },
           { path: '*', element: <PlaceholderPage /> },
         ],
       },
