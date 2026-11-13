@@ -20,6 +20,7 @@ from app.routers.roles import router as roles_router
 from app.routers.audit import router as audit_router
 from app.routers.portfolios import router as portfolios_router
 from app.routers.applications import router as applications_router
+from app.routers.dashboard import router as dashboard_router
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ app.include_router(roles_router)
 app.include_router(audit_router)
 app.include_router(portfolios_router)
 app.include_router(applications_router)
+app.include_router(dashboard_router)
 
 
 @app.exception_handler(RequestValidationError)
