@@ -73,3 +73,36 @@ async def test_audit_filters_date_bounds_pagination_and_invalid_values(api_clien
     assert (await api_client.get("/api/audit-logs", params={
         "from": (now + timedelta(days=1)).isoformat(), "to": now.isoformat(),
     }, headers=headers)).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_audit_csv_preserves_json_query_and_records_success_after_generation(
+    api_client: AsyncClient, started_app: AsyncMongoClient[dict[str, Any]],
+) -> None:
+    """Keep JSON history intact and export authorized filtered history with one audit record."""
+    admin = await _headers(api_client, "admin@ketsip.local", "TestAdminPassword123!")
+    database = started_app.get_database("ketsip_test")
+    before = await database["audit_logs"].count_documents({"action": "export", "entityType": "audit"})
+    json_response = await api_client.get("/api/audit-logs?action=login", headers=admin)
+    assert json_response.status_code == 200 and json_response.headers["content-type"].startswith("application/json")
+    response = await api_client.get("/api/audit-logs?format=csv&action=login", headers=admin)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    assert 'attachment; filename="audit-logs.csv"' in response.headers["content-disposition"]
+    assert response.text.splitlines()[0] == "id,timestamp,userId,userName,action,entityType,entityId,details"
+    assert await database["audit_logs"].count_documents({"action": "export", "entityType": "audit"}) == before + 1
+
+
+@pytest.mark.asyncio
+async def test_audit_csv_requires_existing_audit_authorization_and_invalid_format_is_rejected(
+    api_client: AsyncClient, started_app: AsyncMongoClient[dict[str, Any]],
+) -> None:
+    """Deny unauthorized CSV exports without auditing and reject unknown formats."""
+    database = started_app.get_database("ketsip_test")
+    before = await database["audit_logs"].count_documents({"action": "export", "entityType": "audit"})
+    assert (await api_client.get("/api/audit-logs?format=csv")).status_code == 401
+    executive = await _headers(api_client, "executive@ketsip.local")
+    assert (await api_client.get("/api/audit-logs?format=csv", headers=executive)).status_code == 403
+    auditor = await _headers(api_client, "auditor@ketsip.local")
+    assert (await api_client.get("/api/audit-logs?format=pdf", headers=auditor)).status_code == 422
+    assert await database["audit_logs"].count_documents({"action": "export", "entityType": "audit"}) == before

@@ -17,6 +17,7 @@ import {
   updateManagedRole,
   updateManagedUser,
 } from '../api/administration';
+import { downloadCsv, fetchAuditCsv } from '../api/reports';
 
 const permissions: AdminPermission[] = ['view', 'create', 'edit', 'delete', 'export', 'administer'];
 const auditActions: AuditAction[] = ['login', 'create', 'edit', 'delete', 'roleChange', 'permissionChange', 'export'];
@@ -48,6 +49,7 @@ export default function AdministrationPage({ auditOnly = false }: Administration
   const [auditAction, setAuditAction] = useState('');
   const [auditFrom, setAuditFrom] = useState('');
   const [auditTo, setAuditTo] = useState('');
+  const [auditExporting, setAuditExporting] = useState(false);
 
   const loadUsers = useCallback(async (): Promise<void> => {
     const response = await listManagedUsers();
@@ -133,6 +135,26 @@ export default function AdministrationPage({ auditOnly = false }: Administration
   async function submitAuditSearch(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     await runOperation(loadAudit);
+  }
+
+  async function exportAuditCsv(): Promise<void> {
+    setAuditExporting(true);
+    setError('');
+    setSuccess('');
+    try {
+      const download = await fetchAuditCsv({
+        userId: auditUser || undefined,
+        action: auditAction || undefined,
+        from: auditFrom || undefined,
+        to: auditTo || undefined,
+      });
+      downloadCsv(download);
+      setSuccess('Audit CSV download is ready.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'The audit CSV could not be downloaded.');
+    } finally {
+      setAuditExporting(false);
+    }
   }
 
   async function handleSignOut(): Promise<void> {
@@ -221,7 +243,14 @@ export default function AdministrationPage({ auditOnly = false }: Administration
             <div><label htmlFor="audit-action">Action</label><select id="audit-action" value={auditAction} onChange={(event) => setAuditAction(event.currentTarget.value)}><option value="">All actions</option>{auditActions.map((item) => <option key={item}>{item}</option>)}</select></div>
             <div><label htmlFor="audit-from">From</label><input id="audit-from" type="datetime-local" value={auditFrom ? auditFrom.slice(0, 16) : ''} onChange={(event) => setAuditFrom(event.currentTarget.value ? new Date(event.currentTarget.value).toISOString() : '')} /></div>
             <div><label htmlFor="audit-to">To</label><input id="audit-to" type="datetime-local" value={auditTo ? auditTo.slice(0, 16) : ''} onChange={(event) => setAuditTo(event.currentTarget.value ? new Date(event.currentTarget.value).toISOString() : '')} /></div>
-            <button className="primary-button justify-self-start" type="submit" disabled={loading}>Search audit history</button>
+            <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-4">
+              <button className="primary-button" type="submit" disabled={loading}>Search audit history</button>
+              {(user?.permissions.includes('administer') || user?.role === 'Auditor') && (
+                <button className="secondary-button" type="button" disabled={loading || auditExporting} onClick={() => void exportAuditCsv()}>
+                  {auditExporting ? 'Preparing CSV…' : 'Export audit CSV'}
+                </button>
+              )}
+            </div>
           </form>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
