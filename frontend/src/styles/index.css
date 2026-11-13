@@ -1,0 +1,118 @@
+@import '@fontsource/public-sans/400.css';
+@import '@fontsource/public-sans/500.css';
+@import '@fontsource/public-sans/600.css';
+@import '@fontsource/public-sans/700.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-width: 320px;
+    background: var(--color-surface);
+  }
+
+  body {
+    margin: 0;
+    color: var(--color-on-surface);
+    background: var(--color-surface);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin-top: 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--color-deep-forest-teal);
+    line-height: 1.25;
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  a {
+    color: var(--color-primary);
+  }
+
+  input,
+  button {
+    font: inherit;
+  }
+
+  input {
+    width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid var(--color-outline-variant);
+    border-radius: var(--radius-default);
+    background: var(--color-surface-container-lowest);
+    color: var(--color-on-surface);
+    padding: 0.625rem 0.75rem;
+  }
+
+  input:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid var(--color-primary-container);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    color: var(--color-on-primary);
+    background: var(--color-primary);
+  }
+}
+
+@layer components {
+  .primary-button {
+    min-height: 2.75rem;
+    border: 1px solid var(--color-deep-forest-teal);
+    border-radius: var(--radius-default);
+    background: var(--color-deep-forest-teal);
+    color: var(--color-on-primary);
+    padding: 0.625rem 1rem;
+    font-weight: 600;
+    transition: background-color var(--motion-fast), border-color var(--motion-fast);
+  }
+
+  .primary-button:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+
+  .primary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .quiet-card {
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-background-white);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
