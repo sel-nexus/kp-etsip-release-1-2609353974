@@ -1,16 +1,39 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './auth/AuthProvider';
+import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 
-/** Define the single route table for the internal platform. */
+/** Render the protected placeholder routes backed by the requested API surface. */
+function PlaceholderPage(): JSX.Element {
+  const { user } = useAuth();
+  return (
+    <section className="mx-auto max-w-shell px-6 py-12">
+      <h1>{window.location.pathname === '/dashboard' ? 'Executive dashboard' : 'Applications'}</h1>
+      <p className="text-foreground-muted">Signed in as {user?.name} ({user?.role}).</p>
+      <a href="/profile">Manage profile</a>
+    </section>
+  );
+}
+
+/** Define the single route table and API-backed session provider. */
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <AppShell />,
+    element: <AuthProvider><AppShell /></AuthProvider>,
     children: [
-      { index: true, element: <Navigate to="/login" replace /> },
       { path: 'login', element: <LoginPage /> },
-      { path: '*', element: <Navigate to="/login" replace /> },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'dashboard', element: <PlaceholderPage /> },
+          { path: 'applications', element: <PlaceholderPage /> },
+          { path: '*', element: <PlaceholderPage /> },
+        ],
+      },
+      { index: true, element: <Navigate to="/login" replace /> },
     ],
   },
 ]);
