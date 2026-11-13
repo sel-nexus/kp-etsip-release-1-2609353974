@@ -15,6 +15,9 @@ from app.core.database import MongoRepositories, create_indexes, get_database, v
 from app.core.seed import seed_database
 from app.routers.auth import router as auth_router
 from app.routers.health import router as health_router
+from app.routers.users import router as users_router
+from app.routers.roles import router as roles_router
+from app.routers.audit import router as audit_router
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,9 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(roles_router)
+app.include_router(audit_router)
 
 
 @app.exception_handler(RequestValidationError)

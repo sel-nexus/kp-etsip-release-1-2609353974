@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
+import AdministrationPage from './pages/AdministrationPage';
+import PermissionGate from './components/PermissionGate';
 
 /** Render the protected placeholder routes backed by the requested API surface. */
 function PlaceholderPage(): JSX.Element {
@@ -28,6 +30,8 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'profile', element: <ProfilePage /> },
+          { path: 'administration', element: <PermissionGate permission="administer"><AdministrationPage /></PermissionGate> },
+          { path: 'audit', element: <PermissionGate permission="audit"><AdministrationPage auditOnly /></PermissionGate> },
           { path: 'dashboard', element: <PlaceholderPage /> },
           { path: 'applications', element: <PlaceholderPage /> },
           { path: '*', element: <PlaceholderPage /> },
